@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple 專業檢定測驗</title>
+    <!-- 引入 html2pdf 函式庫以支援 PDF 下載 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* ================= 排版與馬卡龍配色 ================= */
+        :root {
+            --macaron-pink: #FFB7B2;
+            --macaron-blue: #A2E1DB;
+            --macaron-yellow: #FDF9C4;
+            --macaron-green: #B5EAD7;
+            --macaron-purple: #D5AAFF;
+            --text-dark: #4A4A4A;
+        }
+
+        body {
+            background-color: var(--macaron-yellow);
+            color: var(--text-dark);
+            font-family: 'Helvetica Neue', Arial, 'LiHei Pro', '微軟正黑體', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-size: 1.3rem;
+        }
+
+        .container {
+            background-color: #FFFFFF;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: bold;
+            font-size: 1.4rem;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.4rem;
+            border: 3px solid var(--macaron-blue);
+            border-radius: 10px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--macaron-purple);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: var(--macaron-blue);
+            border: none;
+            padding: 15px 25px;
+            font-size: 1.3rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #4A4A4A;
+            font-weight: bold;
+        }
+
+        button:hover {
+            filter: brightness(0.95);
+            transform: translateY(-2px);
+        }
+
+        button.selected {
+            background-color: var(--macaron-pink);
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--macaron-pink);
+            color: white;
+            width: 100%;
+            font-size: 1.6rem;
+            margin-top: 20px;
+            padding: 20px;
+        }
+
+        /* 區塊顯示控制 */
+        #quiz-section, #result-section { display: none; }
+
+        /* 測驗區塊樣式 */
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            background-color: var(--macaron-green);
+            padding: 15px 20px;
+            border-radius: 10px;
+        }
+
+        .question-text {
+            font-size: 1.7rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            padding: 25px;
+            background-color: #fcfcfc;
+            border-left: 8px solid var(--macaron-purple);
+            border-radius: 8px;
+        }
+
+        /* 選項直行排列 */
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: center;
+            padding: 20px 25px;
+            background-color: white;
+            border: 3px solid var(--macaron-blue);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: 0.2s;
+        }
+
+        .option-label:hover {
+            background-color: #f0fbfa;
+        }
+
+        input[type="radio"] {
+            transform: scale(2);
+            margin-right: 25px;
+            cursor: pointer;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .nav-buttons button { width: 30%; font-size: 1.4rem; padding: 15px;}
+        
+        .submit-btn { background-color: var(--macaron-pink) !important; color: white !important;}
+
+        /* 結果與詳解區塊 */
+        .result-item {
+            margin-bottom: 25px;
+            padding: 25px;
+            border-radius: 10px;
+            font-size: 1.3rem;
+        }
+        .correct { background-color: var(--macaron-green); }
+        .wrong { background-color: var(--macaron-pink); }
+        
+        .explanation {
+            margin-top: 15px;
+        }
+        
+        .question-source-id {
+            display: inline-block;
+            background-color: #4A4A4A;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app-container">
+    
+    <!-- ================= 1. 首頁設定區塊 ================= -->
+    <div id="setup-section">
+        <h1 id="home-title">Apple 專業檢定測驗</h1>
+        
+        <div class="form-group">
+            <label>請選擇測驗科目：</label>
+            <div class="btn-group" id="subject-group">
+                <button type="button" class="subject-btn selected" data-val="ios">iOS Expert 檢定</button>
+                <button type="button" class="subject-btn" data-val="mac">Mac Specialist 檢定</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>姓名：</label>
+            <input type="text" id="student-name" placeholder="請輸入您的姓名">
+        </div>
+
+        <button class="btn-primary" onclick="startQuiz()">開始測驗 (共 20 題)</button>
+    </div>
+
+    <!-- ================= 2. 測驗進行區塊 ================= -->
+    <div id="quiz-section">
+        <h1 id="quiz-title">檢定測驗</h1>
+        <div class="header-info">
+            <span id="student-info-display"></span>
+            <span id="timer-display">時間: 00:00</span>
+        </div>
+        
+        <h2 id="question-number">第 1 題</h2>
+        <div class="question-text" id="question-text">題目載入中...</div>
+        
+        <!-- 選項直行排列容器 -->
+        <div class="options-container" id="options-container"></div>
+
+        <div class="nav-buttons">
+            <button id="prev-btn" onclick="prevQuestion()">上一頁</button>
+            <button id="next-btn" onclick="nextQuestion()">下一頁</button>
+            <button id="submit-btn" class="submit-btn" style="display:none;" onclick="submitQuiz()">繳交測驗</button>
+        </div>
+    </div>
+
+    <!-- ================= 3. 成績區塊 ================= -->
+    <div id="result-section">
+        <h1 id="result-title">測驗結果</h1>
+        <h2 id="final-score" style="font-size: 3.5rem; color: #D86B6B; margin-top: 0;"></h2>
+        <div class="btn-group" style="justify-content: center; margin-bottom: 30px;">
+            <button onclick="downloadCSV()" style="background-color: var(--macaron-blue);">下載 CSV 檔</button>
+            <button onclick="downloadPDF()" style="background-color: var(--macaron-purple);">下載 PDF 檔</button>
+            <button onclick="location.reload()" style="background-color: #eee; color: #333;">重新測驗</button>
+        </div>
+        <div id="explanation-container"></div>
+    </div>
+
+</div>
+
+<script>
+    // ==========================================
+    //  iOS Expert 題庫 (100題)
+    // ==========================================
+    const iosRawData = [
+        [1, "O", "iPhone 17 Pro 系列採用熱鍛造鋁金屬一體成型設計，有效提升整體散熱能力與耐用度。"],
+        [2, "O", "iPhone 17 、iPhone Air 及 iPhone 17 Pro 的顯示器都採用了 ProMotion 技術，支援最高 120Hz 的自動適應更新頻率。"],
+        [3, "O", "iPhone 17、iPhone Air 及 iPhone 17 Pro 系列皆配備全新 1800 萬像素 Center Stage 前置相機，在拍照和視訊通話時可以保持人物居中。"],
+        [4, "O", "iPhone 17、17 Pro 和 Air 都具備可自訂功能的動作按鈕，帶你一鍵直達可自訂的常用功能。長按即可啟動你想要的操作，如「靜音模式」、「翻譯」、「捷徑」等。"],
+        [5, "O", "iPhone 17 Pro 系列搭載 A19 Pro 晶片，並且採用蒸發冷卻技術，效能表現快如閃電，電池續航也大大突破。"],
+        [6, "O", "iPhone 17 Pro 系列擁有極致的 Pro 相機系統，後置三個相機均為 4800 萬像素融合相機，並擁有歷來最長變焦範圍。"],
+        [7, "O", "iPhone 17、iPhone Air 及 iPhone 17 Pro 系列皆配備第二代超瓷晶盾面板，具備 3 倍抗刮能力更堅固耐用。"],
+        [8, "X", "iPhone 17、iPhone Air 及 iPhone 17 Pro 系列搭載 Apple 獨家設計的 N1 與 C1X 晶片，讓連線與數據傳輸能力大幅提升。"],
+        [9, "X", "iPhone Air 史上最薄的 iPhone，採用鋁金屬邊框，機身僅有 5.6 公釐、輕僅有 165 公克。"],
+        [10, "O", "iPhone Air 搭載全新的 Center Stage 前置相機，使用者橫向自拍時不再需要旋轉 iPhone，直握 iPhone 就能拍攝直向或橫向的相片與影片。"],
+        [11, "O", "iPhone Air 採用僅限 eSIM 的設計，節省內部空間讓外形更輕薄，台灣目前販售版本為雙 eSIM。"],
+        [12, "X", "iPhone 17 提供薰衣草紫色、霧藍色、鼠尾草綠色、白色與黑色，並有 256GB 、 512GB 及 1TB 的儲存容量可選。"],
+        [13, "O", "iPhone 17 全系列手機的「混音」功能運用機器學習技術來辨識背景元素並將其與語音分離，提供使用者三種語音選項：畫面內混音、錄音室混音，以及電影級混音。"],
+        [14, "O", "iPhone 17 全系列手機顯示器都支援動態島，可顯示各種提示和「即時動態」，即使忙著處理其他事，也不會錯過重要消息。"],
+        [15, "X", "iPhone 17e 外觀採用堅固的鋁金屬邊框設計，機身正反面皆配備堅固耐用的超瓷晶盾。"],
+        [16, "O", "iPhone 17e 支援 MagSafe 和最高達 15W 的 Qi2 無線充電，MagSafe 充電器、支架、保護殼、卡套和相機配件皆可輕鬆磁吸至 iPhone 17e 背面。"],
+        [17, "O", "使用 iPhone 相機來錄製「電影級」模式影片，可以在錄製時手動調整對焦點，或稍後在「照片」App 中更改對焦點。"],
+        [18, "X", "使用「相機控制」鍵可以選取和調整設定，像是曝光、景深、放大縮小，或者切換縮時錄影或慢動作。"],
+        [19, "O", "當在訊息中傳送「平安通報」，可選擇只發送「有限資料」，若不在預期時間抵達目的地，iPhone 會通知對方你的目前位置以及 iPhone 與 Apple Watch 的網路訊號和電池詳細資訊。"],
+        [20, "O", "「原況文字」功能可以在照片與影片中偵測到的資料，只要輕點一下就能執行操作。例如撥打電話、導航、翻譯多國外語、換算匯率等等。"],
+        [21, "O", "「雙向同拍」是結合了前置和後置相機的新功能，因此使用者可以同時錄製現場和自己的畫面，或者記錄自己在比賽精彩時刻的反應。"],
+        [22, "O", "iPhone 升級 iOS 26 可在「預覽程式」內掃描文件、並使用「自動填寫」來快速填寫表單，以及將 PDF 和影像輸出為不同檔案類型或大小。"],
+        [23, "O", "iOS 26 全新篩選工具可偵測垃圾訊息，讓使用者可以核准是否回應陌生號碼，掌控誰可以出現在「訊息」對話中。"],
+        [24, "O", "iOS 26 訊息 App 新增了投票功能，群組成員可以共同決定事項並即時查看票數變化。"],
+        [25, "X", "iOS 26 訊息 App 可以將背景加入對話來讓對話更加個人化，新背景功能只能使用內建的動態選項，無法使用自己的照片。"],
+        [26, "O", "iOS 26 Apple Music 新增的 AutoMix 功能可以像 DJ 一樣，無縫地銜接不同歌曲。"],
+        [27, "O", "iOS 26 的「通話篩選」功能會在你決定接聽前，先代為接聽陌生來電並詢問對方姓名與來電事由。"],
+        [28, "X", "iOS 26 自訂稍後提醒選項可讓你在鬧鐘響起時調整稍後提醒的時間，選項介於 1 到 30 分鐘之間。"],
+        [29, "O", "Apple Intelligence 的「清除」功能可以移除照片背景中不想要的物件，同時保持照片的真實感。"],
+        [30, "X", "Apple Intelligence 採用私密雲端運算，在 Apple 晶片上執行，可以處理更複雜的要求，同時保障隱私，目前相容的 iPhone 為 iPhone 16 及後續機種。"],
+        [31, "O", "iPad Air (M4) 採用 N1 無線網路晶片和 C1X 數據機系統，帶來更快速的連接能力。"],
+        [32, "O", "iPad Air (M4) 有藍色、紫色、星光色和太空灰色可供挑選，並提供 128GB、256GB、512GB 和 1TB 等規格。"],
+        [33, "O", "iPad Air (M4) 有 11 吋與 13 吋，並配備高解析度 Liquid Retina 顯示器，並支援原彩顯示帶來出色的觀看體驗。"],
+        [34, "O", "iPad (A16) 支援 Apple Pencil (第一代)，若要配對 iPad 與充電必須使用 USB-C 對 Apple Pencil 轉接器。"],
+        [35, "O", "iPad (A16) 採用 11 吋 Liquid Retina 顯示器，儲存容量有 128GB、256GB、512GB。"],
+        [36, "O", "全新 iPad Pro (M5) 是 Apple 歷來最纖薄的產品，11 吋機型厚度僅 5.3 公釐，13 吋機型更加纖薄，達到驚人的 5.1 公釐，且這兩款機型都與先前的設計一樣堅固。"],
+        [37, "X", "iPad mini (A17 Pro) 採用 8.3 吋 Liquid Retina 顯示器具備原彩顯示、P3 廣色域與超低反射率，室外可以達到 1000 尼特峰值亮度。"],
+        [38, "O", "iPad mini (A17 Pro) 可搭配 Apple Pencil Pro 及 Apple Pencil (USB-C) 使用，也可以配對藍牙鍵盤，但目前無對應的巧控鍵盤。"],
+        [39, "O", "iPad Pro (M5) 的「原深感測」相機系統具備「人物居中」功能的超廣角 1200 萬像素相機，提升了橫向視訊會議體驗。"],
+        [40, "O", "iPad Pro (M5) 的 Face ID 支援橫向和直向解鎖，因此無論橫放在鍵盤上還是直拿都能快速解鎖。"],
+        [41, "O", "iPad Pro (M5) 的 USB-C 接孔支援 Thunderbolt / USB4，最高可達 40Gbps 資料傳輸速率。"],
+        [42, "O", "iPad Pro (M5) 纖薄輕盈又好攜帶是 Apple 歷來最纖薄的產品，相同尺寸的重量也比 iPad Air (M3) 更輕。"],
+        [43, "O", "iPadOS 26 推出強大的檔案管理、存取和編輯新方式，「檔案」app 提供更新的「列表」顯示方式，讓使用者能透過可調整大小的欄位與可收合的檔案夾，查看更多文件細節。"],
+        [44, "O", "iPadOS 26 的視窗並排可以將 App 並排，或分成三等分或四等分，讓使用者可以一次處理更多 App。"],
+        [45, "O", "iPadOS 26 的控制視窗可以用來關閉、最小化或全螢幕顯示視窗，還能把視窗排成各種布局，方便輕鬆查看。"],
+        [46, "O", "iPadOS 26「預覽」App 可以用 Apple Pencil 或觸控方式快速繪圖和針對 PDF 和圖片進行瀏覽、編輯和標記。"],
+        [47, "X", "iPadOS 26「檔案」App 可依照個人喜好任意更改檔案夾的顏色、修改圖示或將檔案夾圖案改成 Memoji。"],
+        [48, "O", "iPadOS26 新增筆刷效果「蘆葦筆」在「備忘錄」等 App 中繪圖時可提供傳統書法的使用體驗。"],
+        [49, "O", "適用於 iPad Pro 的巧控鍵盤採用懸浮式設計，鍵盤為背光鍵盤，採用剪刀式結構，為打字增加手感體驗。"],
+        [50, "O", "適用於 iPad Air 的巧控鍵盤配備 14 鍵的功能鍵列，能方便取用螢幕亮度、音量控制以及其他種種功能。"],
+        [51, "O", "Apple Watch SE 3 具備隨顯 Retina 顯示器，讓使用者不必抬起手腕或點按螢幕，就能方便地查看時間、瀏覽通知。"],
+        [52, "X", "Apple Watch SE 3 可在「生命徵象 」App 中查看心率、呼吸速率、手腕溫度、血氧濃度與睡眠持續時間。"],
+        [53, "O", "Apple Watch Series 11 配備的 Ion-X 玻璃採用陶瓷鍍膜，與配備 Ion-X 玻璃的 Apple Watch Series 10 相比，抗刮能力提升為 2 倍。"],
+        [54, "O", "Apple Watch Ultra 系列機型適用於游泳、浮潛、水肺潛水、高速水上運動，深度計支援深度可達 40 公尺。"],
+        [55, "O", "Apple Watch Ultra 系列機型可自訂的「動作」按鈕，例如用來開始體能訓練、製作「指南針航點」或開始潛水。"],
+        [56, "O", "Apple Watch Ultra 3、Apple Watch Series 11 與 Apple Watch SE 3 須搭配搭載 iOS 26 或以上版本的 iPhone 11 或後續機型使用。"],
+        [57, "O", "在支援「互點兩下」手勢的 Apple Watch 機型上，操作時可以用食指和拇指互點兩下來接聽來電。"],
+        [58, "X", "Apple Watch Ultra 3、Apple Watch Series 11 與 Apple Watch SE 3 皆支援快速充電功能，在日常功能使用下，充電 15 分鐘使用最長可達 10 小時以上。"],
+        [59, "O", "支援睡眠呼吸中止症通知的 Apple Watch，可為未被診斷患有睡眠呼吸中止症的 18 歲或以上人士，偵測到中度至嚴重睡眠呼吸中止症的跡象。"],
+        [60, "X", "選購錶帶時需要注意符合 Apple Watch 的錶殼尺寸，38mm、40mm 和 41mm 錶殼的錶帶可互相相容，42mm、44mm 和 45mm 錶殼的錶帶可互相相容，Apple Watch Ultra 機型僅能選擇 49mm。"],
+        [61, "X", "Apple Watch 的「活動記錄」圓圈目標可以進行調整，如果需要休息片刻，可以暫停活動記錄圓圈最多一週，並不會中斷連續記錄獎章，且可以隨時繼續。"],
+        [62, "O", "在「睡眠」App 中，可以檢視睡眠分數，此分數是根據睡眠的時間長度、入睡時間與近期記錄的穩定性，以及睡眠期間清醒的次數與時長估算得出。"],
+        [63, "X", "使用 Apple Watch 進行測量血氧濃度時，移動手臂、手腕或手指都可能使得測量不成功，需要確保手臂在 30 秒倒數期間靜止不動。"],
+        [64, "O", "「體能訓練」App 提供全新版面，讓使用者能更容易運用「體能訓練顯示畫面」、「自訂體能訓練」、「配速員」、「路線競速」等功能自訂體能訓練。"],
+        [65, "X", "「車禍偵測」功能是設計來偵測嚴重車禍，例如正面撞擊、側面撞擊、追撞和翻車，若偵測到嚴重車禍時，iPhone 或 Apple Watch 會發出警示聲，並顯示畫面提示 1 分鐘。"],
+        [66, "O", "「生命徵象」App 會為在睡覺時收集的每個健康指標建立正常範圍。如果多項指標落在正常範圍之外，會收到通知，並附上可能相關的因素情境，例如用藥、海拔高度變化或生病。"],
+        [67, "O", "「活動記錄」App 會顯示三個圓圈，活動、運動、站立，捲動數位錶冠還可查看每個圓圈的進度、步數總計、爬樓梯段數和動作記錄。"],
+        [68, "O", "「體能訓練」App 中，可以設定最適合自己的跑步體能訓練，例如使用「配速員」來設定跑步配速並查看自己是否超前或落後，使用「路線競速」來挑戰自己在特定路線上的最近或最佳時間。"],
+        [69, "O", "設定「醫療卡」可以在緊急情況發生時，讓急救人員在 Apple Watch 的鎖定畫面上可以看到使用者年齡、血型、醫療狀況、任何可能過敏等詳細資訊。"],
+        [70, "O", "如果你打算出售或轉贈 Apple Watch，需要取消配對你的 Apple Watch 與 iPhone，這個功能會清除內容並移除「啟用鎖定」，以防止其他人啟用。"],
+        [71, "O", "AirPods Pro 3 是首款獲得 IP57 等級的 AirPods，防汗與防潑水設計能適應激烈健身和各種天氣變化。"],
+        [72, "O", "AirPods Pro 3「主動式降噪」效果比 AirPods Pro 2 高出兩倍，讓使用者無論身處室內戶外，都享有更沉浸式的聆聽體驗。"],
+        [73, "O", "AirPods Pro 3 和 AirPods 4 主動式降噪款都支援適應性音訊、通透模式和對話感知功能。"],
+        [74, "X", "AirPods (第 2 代) 支援力度感測器控制，可以透過按壓耳機柄來控制音樂播放和通話。"],
+        [75, "X", "AirPods Pro 3 及 AirPods 4 (主動式降噪款) 的充電盒皆為 MagSafe 充電盒(USB-C)，並配備掛繩孔。"],
+        [76, "O", "AirPods Max 2 採用 H2 晶片與新的運算音訊演算法，支援「適應性音訊」、「對話感知」、「語音隔離」和「即時翻譯」等功能。"],
+        [77, "O", "AirPods Max 2 按一下數位旋鈕可以播放、暫停音樂，或是搞定拍照、錄影，還能在通話時將自己靜音、解除靜音。"],
+        [78, "O", "AirPods Max 2 耳罩材質為鋁金屬，並提供五種美麗的新外觀顏色：午夜色、星光色、橙色、紫色和藍色。"],
+        [79, "O", "要使用 AirPods 控制按鈕來當相機遙控器時，可以設定「按一下」或「按住」耳機柄進行拍照或錄影，且必須是配備 H2 晶片的 AirPods 或 AirPods Pro，操作時 AirPods 要戴在耳朵上才能使用。"],
+        [80, "O", "AirPods Pro 2 和 AirPods Pro 3 提供適用於輕度至中度聽力受損的臨床等級「助聽器」功能，這項新功能運用「聽力測試」建立的個人化聽力檔案，以幫助更廣泛的人群。"],
+        [81, "O", "AirPods 4 主動式降噪款、AirPods Pro 2 和 AirPods Pro 3 的充電盒可使用 Apple Watch 充電器充電。"],
+        [82, "O", "若想設定 HomePod 立體聲喇叭組，需有兩台相同機型的 HomePod 揚聲器才能建立 HomePod 立體聲喇叭組，並且需要在相同的房間。"],
+        [83, "O", "透過在家中放置多部 HomePod mini，可以用「廣播」功能與家人用語音溝通，也可請 Siri 將訊息傳遍整個屋裡或傳到指定的房間，讓家人可以輕鬆回應。"],
+        [84, "O", "Apple Pencil Pro 是 Apple Pencil 首度支援「尋找」功能，幫助使用者在遺失 Apple Pencil Pro 時確認其位置。"],
+        [85, "X", "Apple Pencil (USB-C) 可以磁力吸附在 iPad Pro 的側邊，也能使用懸浮的功能，而且輕點兩下就能轉換工具，例如從鉛筆換到橡皮擦。"],
+        [86, "X", "Apple Pencil (USB‑C) 只要傾斜 Apple Pencil 筆尖，就可以畫出陰影和其他效果，筆尖輕觸一下或更大力按壓，也能感受筆畫粗細的變化。"],
+        [87, "O", "當 AirTag 的電池電量過低時，iPhone 上會顯示通知，可自行更換 CR2032 鋰離子 3V 鈕扣電池。"],
+        [88, "O", "AirTag (第 2 代) 配備的揚聲器音量比上一代提升 50%，「精確尋找」範圍擴大最遠可達 1.5 倍。"],
+        [89, "O", "全新的 iPhone Air MagSafe 電池，具有纖薄輕盈的設計，可以為 iPhone Air 額外提供最高可達 65% 的電量。"],
+        [90, "O", "iPhone 新的配件產品斜背掛繩以 100% 再生紗繩打造，並有嵌入式軟性磁鐵搭配不鏽鋼調節扣可以輕鬆調整最佳的配掛長度，同時可安全地對齊兩側掛繩。"],
+        [91, "X", "Apple One 是一項按月訂閱、沒有綁約的服務，個人方案每月 NT$390，家庭方案則是每月 NT$690。"],
+        [92, "X", "Apple One 家庭方案，使用「家人共享」功能就能與最多達五位其他家庭成員共享所有涵蓋的 Apple 服務，包含 Apple TV+、Apple Music、Apple Arcade 以及 100GB iCloud 空間。"],
+        [93, "O", "「Apple Music 開唱」會顯示即時歌詞，並且隨著歌曲節奏動態顯示，還可以調整人聲功能，自行控制歌手的聲音大小。"],
+        [94, "O", "在 Apple Arcade 的遊戲頁面上看到了控制器圖像，就表示這款遊戲支援控制器，就可以將無線 Xbox、PlayStation 或其他藍牙遊戲控制器連接 iPhone、iPad、Apple TV、Mac 或 Apple Vision Pro 遊玩。"],
+        [95, "O", "tvOS 26 可以在你接到電話或 FaceTime 語音通話時，在 Apple TV 上顯示通知，然後可在已連線的 HomePod 揚聲器或 iPhone 上接聽。"],
+        [96, "O", "Apple TV+ 提供數百部獨家節目與電影，可在各種 Apple 與 Android 裝置、智慧型電視或電視棒的 Apple TV App 上串流播放。"],
+        [97, "O", "在「尋找」App 中可設定及使用「離身通知」，當配對的 AirPods、Apple Watch 或裝有 AirTag 的個人物品留在未知位置時，iPhone 會發出提醒。"],
+        [98, "O", "Apple TV 4K 上的 FaceTime App 能透過「接續互通相機」，順暢連接到 iPhone 或 iPad，讓音訊和視訊顯示在大螢幕。"],
+        [99, "O", "開啟 iCloud 照片（圖庫），在照片 App 中就能選取照片來製作「iCloud 連結」傳給朋友，對方沒有啟用 iCloud 照片一樣能存取。"],
+        [100, "O", "在 HomePod 上進行通話或聆聽音樂或 Podcast 時，若要出門時可以將 iPhone 靠近 HomePod 頂部，點一下「傳送到 iPhone」繼續播放音訊。"]
+    ];
+
+    // ==========================================
+    //  Mac Specialist 題庫 (100題)
+    // ==========================================
+    const macRawData = [
+        [1, "O", "對於重視隱私的用戶,MacBook Neo 512GB 機型標配 Touch ID 巧控鍵盤,輕觸即可安全解鎖或使用 Apple Pay購物。"],
+        [2, "O", "用戶在安靜的圖書館使用 MacBook Neo 撰寫報告時,其無風扇設計能確保電腦在運作時全程安靜無聲,不干擾他人。"],
+        [3, "X", "當用戶需要在大螢幕展示成果時,MacBook Neo 的USB-C埠可輕鬆連接兩部外接顯示器,擴展作業空間以提升效率。"],
+        [4, "O", "MacBook Neo 外殼顏色延伸至鍵盤區,提供銀色、胭粉色、青橘黃色與靛青色,讓追求個人風格的用戶能展現獨特美感。"],
+        [5, "X", "預算有限的客戶使用搭載的A19 Pro 晶片 MacBook Neo,不論是網頁瀏覽與多工處理皆能保持飛快且反應靈敏。"],
+        [6, "O", "學生使用 MacBook Neo 的好處除了價格之外,其1.23公斤輕巧設計與長達16小時續航,能支持一整天學習而不必攜帶充電器。"],
+        [7, "X", "MacBook Neo 沒有3.5公釐耳機插孔,使用者可使用 AirPods 或其他藍牙耳機,若需連接有線耳機聆聽需額外使用轉接器。"],
+        [8, "O", "追求突破性價格的初次購機者。選擇 MacBook Neo 即可享有耐用的鋁金屬設計,確保電腦在未來數年依然穩固可靠。"],
+        [9, "O", "攝影、錄影等創作類型工作者可為 MacBook Air 選配高達4TB的SSD,方便在旅行中存放大量高品質照片與影片庫,無需攜帶外接硬碟。"],
+        [10, "X", "用戶趕時間出門時,可透過35W 電源轉接器為 MacBook Air 進行快充,最快30分鐘即可充至50%的電力。"],
+        [11, "O", "需多工操作的商務人士可同時連接兩部外接顯示器到 MacBook Air (M5),在上螢幕時享有更寬闊的專業桌面環境。"],
+        [12, "O", "遠距工作者透過1200 萬像素 Center Stage 相機開會,即便在房間走動,相機也能自動調整畫面讓使用者保持居中。"],
+        [13, "O", "行動辦公族選擇 MacBook Air (M5),其起始空間翻倍至512GB且SSD 速度提升,能更迅速地讀取大型工作文件。"],
+        [14, "O", "透過 ProMotion 自動適應更新頻率技術,使用者在 MacBook Pro 上快速捲動網頁或文件時,能感受極度流暢的反應。"],
+        [15, "O", "需要連接大量周邊的用戶,MacBook Pro 提供三個 Thunderbolt 埠與HDMI,能輕鬆建構強大的專業工作站。"],
+        [16, "X", "專業影片剪輯師可選配高達80核心GPU的M5 Max 晶片來處理8K影片,讓複雜的渲染與特效處理變得游刃有餘。"],
+        [17, "X", "MacBook Pro (M5/M5 Pro/Max) 上的三個USB-C連接埠都能使用 Thunderbolt 5,可以達到120Gb/s 速度極速傳輸大型開發專案數據。"],
+        [18, "O", "需長期不插電工作的商務人士,16吋MacBook Pro 提供最長達24小時續航,是Mac 筆電史上最耐用的電力表現。"],
+        [19, "O", "配備 M4 的Mac mini 最多支援三部顯示器,兩部6K和一部5K。配備 M4 Pro 的Mac mini 最多支援三部6K顯示器。"],
+        [20, "O", "iMac 的一體成型設計將效能凝聚於僅1.15公分薄的機身內,非常適合追求簡潔美感的高質感居家或辦公環境。"],
+        [21, "O", "全新 iMac 推出7種色彩,搶眼的纖薄設計是世界最出色的一體成型機,並且搭載M4晶片提供出色的運算能力。"],
+        [22, "O", "預算有限的小型工作室非常適合使用搭載的M4晶片 Mac mini,可以用最實惠的價格,提供卓越的效能與精巧的桌上空間佈局。"],
+        [23, "O", "搭載 M4 Pro 晶片的Mac mini 後方的三個Thunderbolt 5 (USB-C)埠可支援最高達120Gb/s 的傳輸速度,加速資料備份。"],
+        [24, "O", "iMac 配備高傳真六揚聲器系統,支援「杜比全景聲」與「空間音訊」,讓聆聽音樂及觀賞影片的體驗更好。"],
+        [25, "X", "Mac Studio 搭載 M4 Max 或M4 Ultra 晶片,提供強大的運算效能,能連接多部顯示器,並能輕鬆驅動複雜的開發環境與多個虛擬機運作。"],
+        [26, "X", "Mac Studio 前方配備的USB-C 埠支援最高120Gb/s速度,讓攝影師能快速從外接讀卡機傳輸高品質相片到電腦。"],
+        [27, "O", "Mac Pro 帶來更豐富多元的連結能力,具備8個 Thunderbolt 埠、2個HDMI 埠帶來最高可達8K的解析度及最高可達240Hz 的更新頻率。"],
+        [28, "O", "Mac Pro 具備七個擴充槽,其中六個為PCle gen 4,可為音訊和視訊、網路和儲存裝置等擴充卡提供兩倍的頻寬。"],
+        [29, "O", "用戶在明亮辦公室使用 Studio Display,可選配「奈米紋理玻璃」以大幅減少螢幕反射,同時維持絕佳的觀看對比度。"],
+        [30, "O", "創意專業人士使用 Pro Display XDR 進行調色,高達1600尼特的峰值亮度能精準呈現HDR影像中的極致光影細節。"],
+        [31, "O", "密碼 App 可以管理你在不同網站的登入密碼、通行密鑰,並提醒是否有洩漏風險,也會記錄你曾經連線的 Wi-Fi名稱與密碼。"],
+        [32, "X", "macOS Sequoia 以上版本的郵件和 iMessage 都可以設定稍後傳送,但無法指定24小時後的時間發送。"],
+        [33, "O", "macOS Sequoia 或以上版本可以使用數學備忘錄功能,在備忘錄中輸入數字和算式並在結尾輸入「=」就會立即解答,還可以輸入變數來執行複雜的計算或做圖。"],
+        [34, "O", "配備 M1或後續晶片的Mac,升級到 macOS Sequoia 15.1 之後都能在「照片」中使用「清除」功能。"],
+        [35, "O", "當你想要簡單快速的裁切一段短片,無需打開 QuickTime Player 或iMovie,「快速查看」就能直接幫你完成。"],
+        [36, "O", "Numbers 試算表具有過濾、排序與樞紐分析表的功能,也能使用函數公式來輔助資料計算和分析,完成的檔案也能輸出成 Excel格式。"],
+        [37, "O", "Keynote 支援 HDR 媒體格式,當你將 HDR 影像和影片加入幻燈片並播放時,這些內容在支援的裝置上就能以HDR格式呈現。"],
+        [38, "O", "Keynote 支援多方發表人簡報播放,只要邀請團隊成員合作簡報,就能在視訊會議中由不同發表人各自控制播放,讓會議進行更便利。"],
+        [39, "X", "從 Numbers 製作的表格與圖表,只能在 Numbers 裡頭使用,由於格式限制問題,無法貼到Pages 或 Keynote裡頭繼續使用。"],
+        [40, "O", "Keynote 全新的AI功能可以依據投影片內容脈絡,自動產生發表人備註。"],
+        [41, "O", "使用 Keynote 製作簡報時,加入越多高畫質照片與影片會讓簡報檔案越龐大,可以利用「減少檔案大小」功能,讓檔案分享更便利。"],
+        [42, "O", "Mac 除了本身內建多種功能強大的生產力軟體之外,也能下載其他專業軟體像是 Logic Pro、MainStage 進行音樂製作,或是 Final Cut Pro、Motion、Compressor 來進行影像編輯與3D特效創作。"],
+        [43, "O", "Keynote、Pages、Numbers 都有內建 Apple Intelligence 的影像樂園,可以直接插入影像樂園生成的圖片,不需要離開 App 就能使用。"],
+        [44, "O", "Keynote、Pages、Numbers 都有內建非常精美又多元的主題與樣板,使用者可以找到最適合的來進行編輯與修改。"],
+        [45, "X", "Keynote 製作的幻燈片大小比例有16:9和4:3,符合大部分市面上投影機或螢幕的需求,除了這個尺寸之外無法自行調整比例與尺寸。"],
+        [46, "X", "書寫工具可以協助改寫你的文字,預設有三種模式,平易近人、專業和簡潔,若要改寫成其他語氣或形式必須透過第三方工具才能完成。"],
+        [47, "O", "使用 Safari 瀏覽網頁時,若網頁可被翻譯成其中一個使用者偏好的語言,在網址列會顯示翻譯按鈕,點選可以讓Safari 翻譯網頁。"],
+        [48, "O", "在Mac上,按一下Shift + Command+5可以來打開「截圖」和顯示工具,截圖會儲存為.png 檔案,螢幕錄影項目會儲存為.mov 檔案。"],
+        [49, "O", "Mac 的桌面按一下桌面,然後選擇「顯示方式」>「使用堆疊」或按住 Control 鍵並按一下桌面,然後選擇「使用堆疊」就可以整齊地整理分組桌面上的檔案。"],
+        [50, "O", "在Mac 可以直接在「快速查看」視窗中旋轉照片、裁切音訊和影片剪輯片段以及使用「標示」。"],
+        [51, "O", "拖移視窗時按住Option鍵,就能預覽所有並排位置,或是長按視窗左上角的綠色按鈕以及選單列,則能讓你快速選擇並排位置選項。"],
+        [52, "O", "選擇檔案或檔案夾並按住Option 鍵會顯示路徑列,可以查看檔案或檔案夾的位置,點選路徑中的其他位址也能立即前往。"],
+        [53, "O", "保護 Mac 免受惡意軟體的危害,使用者可以在隱私權與安全性設定只能從 App Store 或從App Store 和已識別的開發者下載安裝應用程式。"],
+        [54, "O", "升級到 macOS 26 Tahoe 之後的Spotlight 可以用來搜尋文件檔案、應用程式、捷徑動作和剪貼簿上的文字或檔案。"],
+        [55, "O", "升級到 macOS Sequoia 或以上版本,使用FaceTime 或第三方視訊軟體時,可以透過「音訊和影片控制項目」來變更背景,除了系統內建的圖片之外也可以選擇自己的相片。"],
+        [56, "O", "Mac 上設定印表機相當輕鬆,多數情況下當你加入有支援 AirPrint 的印表機時,macOS 會自動連接印表機,或自動下載印表機需要的驅動程式。"],
+        [57, "O", "螢幕快照 Command + Shift +3可以快速擷取桌面,Command + Shift + 4可以自行選擇要擷取的範圍,Command + Shift +5可以選擇要擷取的視窗畫面,也可以點按「選項」設定更多細節。"],
+        [58, "O", "升級到 macOS 26 Tahoe 之後,你可以把檔案夾加入Dock,並且設定排序、顯示以及檢視內容方式。"],
+        [59, "O", "macOS 26 Tahoe 有更強的 Spotlight 功能,你可以在設定中的Spotlight > 來自系統的結果>文件>隱藏的檔案類型,加入不希望被搜尋檔案資料。"],
+        [60, "O", "依據瀏覽需要,Command+1或Command+2 (+3/+4) 快速鍵可以切換瀏覽模式,例如在 Finder 就是切換「圖像、列表、直欄、圖庫」,地圖、行事曆、Safari 等 app 也適用。"],
+        [61, "O", "macOS 26 Tahoe 桌面支援更多種的堆疊整理方式,可以依照檔案類型、標籤、加入與製作日期等分組來進行堆疊。"],
+        [62, "X", "升級到 macOS 26 Tahoe 你可以使用顏色、符號或表情符號自訂檔案夾圖像外觀,但不能使用自己的圖片成為檔案夾外觀。"],
+        [63, "X", "macOS 26 Tahoe 新增電話功能,只要Mac 和iPhone 是相同的iCloud 帳號,不需要登入FaceTime,也不用連接相同的WiFi 即可在Mac上撥打電話。"],
+        [64, "X", "macOS 26 Tahoe 可以在桌面上和通知中心裡使用小工具,只要在桌面新增小工具就會自動在通知中心加入相同的小工具,操作非常方便。"],
+        [65, "O", "若你與他人共用 Mac,可以在系統設定>使用者與群組,設定多位使用者帳號,使用者角色分別有管理者、一般和僅共享三種,也可以建立群組,允許多個使用者具有相同的存取權限。"],
+        [66, "X", "在Mac 上使用第三方藍牙鍵盤、滑鼠或觸控板時,只要使用USB-C 連接線將 Mac 與設備連線即可自動完成配對。"],
+        [67, "O", "配備M系列晶片的Mac皆可以使用清除輔助程式來重置 Mac,操作方式為系統設定>一般>移轉或重置>清除所有內容和設定。"],
+        [68, "O", "升級到 macOS Monterey 12以上,配備T2安全晶片的 intel 架構的Mac可以使用清除輔助程式來重置 Mac,操作方式與搭載M系列晶片的Mac 相同。"],
+        [69, "O", "Mac 內建復原系統「macOS復原」,在配備M系列晶片的Mac操作方式為,先將Mac關機,按住電源按鈕直到畫面出現系統卷宗和選項按鈕,選取「選項」,按一下「繼續」依照指示操作。"],
+        [70, "O", "當使用 Mac 時有任何問題都可以查閱「Mac使用手冊」,點選Finder > 輔助說明> Mac使用手冊,即可查看,也可以使用Spotlight 搜尋網路資訊。"],
+        [71, "O", "FaceTime 接力功能可以在iPhone、iPad、Mac 之間順暢切換,讓聯繫不中斷。"],
+        [72, "O", "安裝 watchOS 6以上的Apple Watch 與 Mac 使用相同 Apple ID,並開啟雙重認證,即可在Mac上「自動解鎖」和「使用Apple Watch 進行核准」。"],
+        [73, "X", "只有使用相同 Apple ID的iPhone 或iPad,且必需使用相同 WiFi 網路才可以使用 AirPlay to Mac 的功能。"],
+        [74, "O", "透過「通用控制」,可以在最多三部裝置上使用一組鍵盤和滑鼠或觸控式軌跡版,也可以在裝置之間拖移檔案。"],
+        [75, "X", "「通用剪貼板」可以在一部 Apple 裝置上拷貝文字、影像、照片和影片,然後在另一部Apple 裝置上貼上內容,這個功能僅限於在Mac 與iPad,iPhone 並不支援。"],
+        [76, "O", "開啟 iCloud 雲碟的「桌面與文件檔案夾」功能,從iPhone的「檔案」App就能讀取儲存在公司Mac 桌面上的所有檔案。"],
+        [77, "O", "使用者可以將桌面和文件檔案夾自動儲存在「iCloud 雲碟」,這樣就可以在所有登入 Apple ID 的電腦、iOS 和iPadOS 裝置上使用。"],
+        [78, "O", "欲使用接續互通相機功能必須同時開啟Wi-Fi 與藍牙,且iOS裝置軟體必須是iOS 12或以上版本,Mac必須為macOS Mojave 或以上版本。"],
+        [79, "O", "當使用者的Mac 和裝置位於附近時,Mac會使用 iPhone 或iPad(行動網路機型)的個人熱點來連接網際網路。"],
+        [80, "O", "「並行」功能可讓iPad 做為 Mac 的第二部顯示器,擴展工作空間,讓使用者在Mac上也可以使用Apple Pencil發揮創意。"],
+        [81, "O", "「接續互通標示」功能可讓使用者在iPad上使用 Apple Pencil,或在iPhone 上動動手指,就能完成簽署文件標示重點等等。"],
+        [82, "O", "透過「接續互通相機」功能,不用花費額外傳輸的時間,就能操作 iPhone、iPad 進行拍照、掃描文件與塗鴉,並將檔案存在 Mac上。"],
+        [83, "O", "使用 iPhone 鏡像輸出功能時,Mac 與iPhone 必須登入相同 Apple ID且使用雙重認證,兩台設備必須在附近並開啟藍牙和Wi-Fi。"],
+        [84, "X", "macOS 26 Tahoe 的即時動態僅顯示來自 Mac本身的活動,不包括iPhone的活動。"],
+        [85, "O", "macOS 26 Tahoe 可以開啟 iPhone 上的App,開啟後會進入iPhone 鏡像輸出模式,使用者可以直接在Mac上操作。"],
+        [86, "O", "使用 iPhone 鏡像輸出功能時,可以透過Mac上的觸控板、鍵盤或滑鼠來控制 iPhone 上的App,同時 iPhone會保持鎖定狀態。"],
+        [87, "X", "通用控制可以控制最多兩部附近的Mac 或iPad裝置,但必須使用Mac 的鍵盤、滑鼠或觸控式軌跡板操作,無法使用 iPad 的巧控鍵盤。"],
+        [88, "O", "Apple Watch Series 9、Apple Watch Ultra 2或後續機型設定為Keynote 遙控器時,只要將食指和拇指連續點兩下即可開始播放幻燈片秀或前進到下一張幻燈片或下一個構件。"],
+        [89, "O", "使用通用控制控制其他設備時,可以從顯示器設定>排列,來調整其他設備的相對位置,讓操作更直覺。"],
+        [90, "O", "在可執行「iPhone 鏡像輸出」功能的Mac 選單列上,可以顯示來自iPhone的「即時動態」,當點按任一則動態,就會在「iPhone 鏡像輸出」中打開相應的App,讓使用者進行操作。"],
+        [91, "O", "Apple Creator Studio 是一項包含 Keynote、Pages、Numbers 以及無邊記的付費訂閱方案,訂閱費用為每月NT$390 或每年 NT$3,900。"],
+        [92, "X", "Keynote Pages 與 Numbers 現在已不再提供免買下載。必須訂閱 Apple Creator Studio 方案才能使用。"],
+        [93, "O", "訂閱 Apple Creator Studio 的用戶,可使用 Final Cut Pro, Motion 和 Compressor 製作影片,在Logic Pro 和Main Stage 中創作音樂,還能用 Pixelmator Pro 編輯照片或圖形。"],
+        [94, "X", "Apple Music 的「保真壓縮音訊」主要目的是節省行動數據用量,若要聆聽保真壓縮音訊可以在「設定」>「音樂」>「音訊品質」中開啟。"],
+        [95, "O", "Apple Music 的家庭方案成員皆擁有各自獨立的音樂資料庫與個人化推薦,可以分別建立自己的播放清單。"],
+        [96, "O", "Apple Arcade 的遊戲進度會自動透過iCloud 在不同裝置之間同步,不管使用什麼Apple 裝置都可以繼續暢玩。"],
+        [97, "O", "「iCloud 鑰匙圈」會在使用者核准的任何裝置上自動填寫帳密資訊,例如 Safari 和App 使用者名稱、Wi-Fi 密碼等。"],
+        [98, "X", "Apple TV+在台灣的每月訂閱價格為NT$250,若要增加觀看者必須額外增加費用,並且限定同住者才能觀看。"],
+        [99, "X", "iCloud+包含額外 iCloud 儲存空間,目前只有2TB 及以上的iCloud+方案可以透過「家人共享」與家庭成員共用儲存空間。"],
+        [100, "O", "訂閱 iCloud+之後會有「Apple活動邀約」、「iCloud 私密轉送」、「隱藏我的電子郵件」、「HomeKit 安全錄影」等實用功能。"]
+    ];
+
+    // 狀態變數 (固定20題)
+    const selectedCount = 20; 
+    let currentSubject = 'ios'; // 預設科目
+    let quizQuestions = [];
+    let currentQuestionIndex = 0;
+    let userAnswers = [];
+    let timerInterval;
+    let secondsElapsed = 0;
+
+    // --- 科目選擇切換邏輯 ---
+    document.querySelectorAll('.subject-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            currentSubject = this.getAttribute('data-val');
+        });
+    });
+
+    // --- 陣列洗牌函數 (Fisher-Yates) ---
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    // --- 開始測驗 ---
+    function startQuiz() {
+        const studentName = document.getElementById('student-name').value.trim();
+        
+        if (!studentName) {
+            alert("請輸入姓名！");
+            return;
+        }
+
+        // 依據選擇的科目載入題庫
+        const rawData = currentSubject === 'ios' ? iosRawData : macRawData;
+        const subjectTitle = currentSubject === 'ios' ? 'iOS Expert 檢定' : 'Mac Specialist 檢定';
+        
+        // 格式化題庫物件
+        const questionDatabase = rawData.map(item => {
+            return {
+                id: item[0],
+                answer: item[1],
+                text: item[2]
+            };
+        });
+
+        // 複製題庫進行洗牌（避免重複抽題）
+        let pool = [...questionDatabase];
+        shuffleArray(pool);
+        
+        // 抽出指定題數 (此處為20題)
+        const actualCount = Math.min(selectedCount, pool.length);
+        quizQuestions = pool.slice(0, actualCount);
+        userAnswers = new Array(actualCount).fill(null);
+
+        // 切換畫面
+        document.getElementById('setup-section').style.display = 'none';
+        document.getElementById('quiz-section').style.display = 'block';
+        
+        // 更新標題
+        document.getElementById('quiz-title').innerText = subjectTitle;
+        document.getElementById('result-title').innerText = subjectTitle + ' - 結果';
+        document.getElementById('student-info-display').innerText = `考生：${studentName}`;
+
+        // 啟動計時器
+        secondsElapsed = 0;
+        timerInterval = setInterval(updateTimer, 1000);
+
+        renderQuestion();
+    }
+
+    // --- 計時器 ---
+    function updateTimer() {
+        secondsElapsed++;
+        const m = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+        const s = (secondsElapsed % 60).toString().padStart(2, '0');
+        document.getElementById('timer-display').innerText = `時間: ${m}:${s}`;
+    }
+
+    // --- 渲染題目與選項 ---
+    function renderQuestion() {
+        const q = quizQuestions[currentQuestionIndex];
+        document.getElementById('question-number').innerText = `第 ${currentQuestionIndex + 1} 題 / 共 ${quizQuestions.length} 題`;
+        document.getElementById('question-text').innerText = q.text;
+
+        const container = document.getElementById('options-container');
+        container.innerHTML = "";
+
+        // 選項固定排列出現 (不再隨機打亂，O 在上、X 在下)
+        let options = ["O", "X"];
+
+        options.forEach(opt => {
+            const label = document.createElement('label');
+            label.className = "option-label";
+            
+            const radio = document.createElement('input');
+            radio.type = "radio";
+            radio.name = "answer";
+            radio.value = opt;
+            
+            // 記憶已選答案
+            if (userAnswers[currentQuestionIndex] === opt) {
+                radio.checked = true;
+            }
+
+            radio.addEventListener('change', (e) => {
+                userAnswers[currentQuestionIndex] = e.target.value;
+            });
+
+            label.appendChild(radio);
+            label.appendChild(document.createTextNode(opt === "O" ? "正確 (O)" : "錯誤 (X)"));
+            container.appendChild(label);
+        });
+
+        // 按鈕顯示邏輯
+        document.getElementById('prev-btn').style.visibility = currentQuestionIndex === 0 ? 'hidden' : 'visible';
+        
+        if (currentQuestionIndex === quizQuestions.length - 1) {
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('submit-btn').style.display = 'inline-block';
+        } else {
+            document.getElementById('next-btn').style.display = 'inline-block';
+            document.getElementById('submit-btn').style.display = 'none';
+        }
+    }
+
+    function prevQuestion() {
+        if (currentQuestionIndex > 0) {
+            currentQuestionIndex--;
+            renderQuestion();
+        }
+    }
+
+    function nextQuestion() {
+        if (currentQuestionIndex < quizQuestions.length - 1) {
+            currentQuestionIndex++;
+            renderQuestion();
+        }
+    }
+
+    // --- 繳交與計分 ---
+    function submitQuiz() {
+        if (userAnswers.includes(null)) {
+            const confirmSubmit = confirm("您還有題目未作答，確定要提早繳交嗎？");
+            if (!confirmSubmit) return;
+        }
+
+        clearInterval(timerInterval);
+        
+        let correctCount = 0;
+        let explanationHTML = "";
+
+        quizQuestions.forEach((q, index) => {
+            const userAns = userAnswers[index];
+            const isCorrect = userAns === q.answer;
+            if (isCorrect) correctCount++;
+
+            const statusClass = isCorrect ? "correct" : "wrong";
+            const statusText = isCorrect ? "✅ 答對" : "❌ 答錯";
+            const userAnsText = userAns ? userAns : "未作答";
+
+            // 無論對錯皆標示原題庫的題號
+            explanationHTML += `
+                <div class="result-item ${statusClass}">
+                    <h3>第 ${index + 1} 題：${statusText}</h3>
+                    <p><strong>題目：</strong>${q.text}</p>
+                    <p><strong>您的作答：</strong>${userAnsText} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>正確答案：</strong>${q.answer}</p>
+                    <div class="explanation">
+                        <span class="question-source-id">原題庫第 ${q.id} 題</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        const score = Math.round((correctCount / quizQuestions.length) * 100);
+
+        document.getElementById('quiz-section').style.display = 'none';
+        document.getElementById('result-section').style.display = 'block';
+        document.getElementById('final-score').innerText = `總分：${score} 分`;
+        document.getElementById('explanation-container').innerHTML = explanationHTML;
+    }
+
+    // --- 匯出 CSV 檔 ---
+    function downloadCSV() {
+        const studentName = document.getElementById('student-name').value;
+        const score = document.getElementById('final-score').innerText;
+        const subjectTitle = currentSubject === 'ios' ? 'iOS_Expert' : 'Mac_Specialist';
+        
+        let csvContent = "\uFEFF"; // 加入 BOM 支援 Excel 中文顯示
+        csvContent += "姓名,測驗科目,成績,測驗題號,原題庫題號,題目,您的作答,正確答案,結果\n";
+
+        quizQuestions.forEach((q, index) => {
+            const userAns = userAnswers[index] || "未作答";
+            const isCorrect = userAns === q.answer ? "正確" : "錯誤";
+            const safeText = q.text.replace(/"/g, '""'); // 處理 CSV 內的引號
+            csvContent += `${studentName},${subjectTitle},${score},${index + 1},${q.id},"${safeText}",${userAns},${q.answer},${isCorrect}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${subjectTitle}_檢定成績_${studentName}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // --- 匯出 PDF 檔 ---
+    function downloadPDF() {
+        const studentName = document.getElementById('student-name').value;
+        const subjectTitle = currentSubject === 'ios' ? 'iOS_Expert' : 'Mac_Specialist';
+        const element = document.getElementById('result-section');
+        
+        // 暫時隱藏按鈕區塊，避免被印進 PDF 內
+        const btnGroup = element.querySelector('.btn-group');
+        btnGroup.style.display = 'none';
+
+        const opt = {
+            margin:       10,
+            filename:     `${subjectTitle}_檢定成績_${studentName}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            // 下載完成後恢復按鈕顯示
+            btnGroup.style.display = 'flex';
+        });
+    }
+</script>
+
+</body>
+</html>
